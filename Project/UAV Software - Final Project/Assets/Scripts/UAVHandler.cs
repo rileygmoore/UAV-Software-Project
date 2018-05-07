@@ -15,7 +15,7 @@ public class UAVHandler : MonoBehaviour
 	private float defaultYPosition = 1.0f;
 	private bool returningToPosition = false;
 	private Vector3 actualTarget;
-	private int currentUAVSeedCount = 199943;
+	private int currentUAVSeedCount = 199894;
     private GUIStyle style = new GUIStyle();
     private Vector3 idlePosition = new Vector3();
     private bool atIdlePosition;
@@ -26,7 +26,7 @@ public class UAVHandler : MonoBehaviour
 	private bool readyToPlant = true;
 
     // Constants
-	private const int UAVSeedCapacity = 199943;
+	private const int UAVSeedCapacity = 199894;
     private const int acreSeedCapacity = 600000;
     private const int seedsPerPlantingMarker = 89;
 

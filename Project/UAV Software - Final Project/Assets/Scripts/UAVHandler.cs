@@ -7,6 +7,7 @@ public class UAVHandler : MonoBehaviour
     // Public variables
     public GameObject UAVIdlePoint;
 	public GameObject seedRefillLocation;
+	public GameObject batteryRechargeLocation;
 
     // Private variables
 	private int visitedWaypoints = 0;
@@ -24,11 +25,17 @@ public class UAVHandler : MonoBehaviour
 	private bool atRefillLocation = false;
 	private bool refill = false;
 	private bool readyToPlant = true;
+	private bool needsToRecharge = false;
+	private float currentBatteryCharge = 11142.76f;
+	private float batteryDischargeRate = 0.007f;
+	private float playedTime = 0.0f;
 
     // Constants
-	private const int UAVSeedCapacity = 199894;
-    private const int acreSeedCapacity = 600000;
-    private const int seedsPerPlantingMarker = 89;
+	private const int UAV_SEED_CAPACITY = 199894;
+	private const int ACRE_SEED_CAPACITY = 600000;
+	private const int SEEDS_PER_PLANTING_MARKER = 89;
+	private const float MAX_BATTERY_CHARGE = 11142.76f;
+	private const float BATTERY_RECHARGE_THRESHOLD = 1114.28f;
 
     private void Start()
     {
@@ -39,10 +46,17 @@ public class UAVHandler : MonoBehaviour
 
     void Update () 
 	{
+		playedTime += Time.deltaTime;
+		Invoke("DischargeBattery", 1.0f * Time.deltaTime);
+
 		if (currentUAVSeedCount == 0 || !readyToPlant) 
 		{
-			Invoke ("Refill", 0.0f);
+			Invoke("Refill", 0.0f);
 		} 
+		else if (currentBatteryCharge <= BATTERY_RECHARGE_THRESHOLD || needsToRecharge) 
+		{
+			Invoke("Recharge", 0.0f);
+		}
 		else 
 		{
 			// Reset the values for the seed refilling function
@@ -133,7 +147,6 @@ public class UAVHandler : MonoBehaviour
 		} 
 		else 
 		{
-
 			// Move the UAV to the seed refilling station
 			if (readyToReturn) 
 			{
@@ -154,13 +167,14 @@ public class UAVHandler : MonoBehaviour
 
 				if (transform.position.y == 0.4f) 
 				{
+					batteryDischargeRate = 0.0f;
 					StartCoroutine("RefillSeeds");
 					refill = true;
 				}
 			}
 
 			// Move the UAV back to the traveling y-axis value to prepare for travel
-			if (currentUAVSeedCount == (UAVSeedCapacity) && transform.position.y < defaultYPosition) 
+			if (currentUAVSeedCount == (UAV_SEED_CAPACITY) && transform.position.y < defaultYPosition) 
 			{
 				actualTarget = new Vector3(transform.position.x, defaultYPosition, transform.position.z);
 				transform.position = Vector3.MoveTowards(transform.position, actualTarget, step);
@@ -173,15 +187,89 @@ public class UAVHandler : MonoBehaviour
 		}
 	}
 
+	private void Recharge()
+	{
+		needsToRecharge = true;
+
+		// Set UAVSpeed to the UAV's unburdened traveling speed
+		float step = (UAVSpeed * 2.172f) * Time.deltaTime;
+
+		// Move the UAV back to the traveling y-axis value to prepare for travel
+		if (!atRefillLocation) 
+		{
+			actualTarget = new Vector3(transform.position.x, defaultYPosition, transform.position.z);
+			transform.position = Vector3.MoveTowards(transform.position, actualTarget, step);
+
+			if (transform.position.y == defaultYPosition) 
+			{
+				readyToReturn = true;
+				atRefillLocation = true;
+			}
+		} 
+		else 
+		{
+			// Move the UAV to the seed refilling station
+			if (readyToReturn) 
+			{
+				actualTarget = new Vector3(batteryRechargeLocation.transform.position.x,
+					defaultYPosition, batteryRechargeLocation.transform.position.z);
+				transform.position = Vector3.MoveTowards(transform.position, actualTarget, step);
+			}
+
+			// Move the UAV downwards as necessary and begin the seed refilling process
+			if (transform.position.x == batteryRechargeLocation.transform.position.x
+				&& transform.position.z == batteryRechargeLocation.transform.position.z
+				&& !refill) 
+			{
+				readyToReturn = false;
+				actualTarget = new Vector3(batteryRechargeLocation.transform.position.x,
+					0.4f, batteryRechargeLocation.transform.position.z);
+				transform.position = Vector3.MoveTowards(transform.position, actualTarget, step);
+
+				if (transform.position.y == 0.4f) 
+				{
+					batteryDischargeRate = 0.0f;
+					Invoke("RechargeBattery", 0.0f);
+					refill = true;
+				}
+			}
+
+			// Move the UAV back to the traveling y-axis value to prepare for travel
+			if (currentBatteryCharge == (MAX_BATTERY_CHARGE) && transform.position.y < defaultYPosition) 
+			{
+				actualTarget = new Vector3(transform.position.x, defaultYPosition, transform.position.z);
+				transform.position = Vector3.MoveTowards(transform.position, actualTarget, step);
+
+				if (transform.position.y == defaultYPosition) 
+				{
+					needsToRecharge = false;
+				}
+			}
+		}
+	}
+
 	private IEnumerator RefillSeeds()
 	{
-		yield return new WaitForSeconds(1.0f);
-		currentUAVSeedCount = UAVSeedCapacity;
+		yield return new WaitForSeconds(7.5f);
+		currentUAVSeedCount = UAV_SEED_CAPACITY;
 		readyToRefill = false;
+		batteryDischargeRate = 0.007f;
+	}
+
+	private void RechargeBattery()
+	{
+		currentBatteryCharge = MAX_BATTERY_CHARGE;
+	}
+
+	private void DischargeBattery()
+	{
+		currentBatteryCharge -= batteryDischargeRate;
 	}
 
     private void OnGUI()
     {
         GUI.Label(new Rect(0, 0, Screen.width, Screen.height), "Current UAV Seed Count: " + currentUAVSeedCount.ToString("n0"), style);
+		GUI.Label(new Rect(0, 15, Screen.width, Screen.height), "Current UAV Battery Charge: " + ((currentBatteryCharge / MAX_BATTERY_CHARGE) * 100).ToString("n0"), style);
+		GUI.Label(new Rect(0, 30, Screen.width, Screen.height), "Elapsed Time: " + (playedTime).ToString() + " seconds", style);
     }
 }

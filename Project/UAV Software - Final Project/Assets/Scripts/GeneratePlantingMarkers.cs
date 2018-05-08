@@ -18,6 +18,7 @@ public class GeneratePlantingMarkers : MonoBehaviour
 	// Variables necessary for the waypoint creation
 	private int count = 0;
 	private int flipMultiplier = 1;
+	private int flipCount = 1;
 
 	void Start ()
     {
@@ -35,6 +36,18 @@ public class GeneratePlantingMarkers : MonoBehaviour
 		// Generate all necessary planting markers and waypoints for the assigned field
 		for (int j = 0; j < 25; j++)
 		{
+			if ((flipCount % 2) == 0) 
+			{
+				startingXPosition += 0.51f;
+			} 
+			else 
+			{
+				if (flipCount != 1) 
+				{
+					startingXPosition -= 0.51f;
+				}
+			}
+
 			for (int i = 0; i < 267; i++) 
 			{
 				Vector3 newPosition = new Vector3(startingXPosition, 
@@ -49,6 +62,7 @@ public class GeneratePlantingMarkers : MonoBehaviour
 
 			startingZPosition -= 0.51f;
 			flipMultiplier *= -1;
+			flipCount++;
 		}
 	}
 }
